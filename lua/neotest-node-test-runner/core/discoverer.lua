@@ -1,3 +1,4 @@
+local io = require("io")
 local lib = require("neotest.lib")
 
 local Discoverer = {}
@@ -67,19 +68,33 @@ function Discoverer.is_test_file(file_path)
 
 	local is_test_file = false
 
-	if string.match(file_path, "__tests__") then
-		is_test_file = true
-	end
-
 	-- https://nodejs.org/api/test.html#running-tests-from-the-command-line
 	for _, ext in ipairs({ "cjs", "mjs", "js", "cts", "mts", "ts" }) do
 		if string.match(file_path, "%." .. ext .. "$") then
 			is_test_file = true
-			goto matched_pattern
+			goto matched_file_pattern
 		end
 	end
-	::matched_pattern::
-	return is_test_file
+
+	::matched_file_pattern::
+	if is_test_file == false then
+		return false
+	end
+
+	local has_node_test_import = false
+
+	local file = io.open(file_path)
+	local lines = file:lines()
+	for line in lines do
+		local result = string.find(line, 'node:test')
+		if result then
+			has_node_test_import = true
+			goto matched_import_pattern
+		end
+	end
+
+	::matched_import_pattern::
+	return has_node_test_import
 end
 
 ---Get the project root dir
